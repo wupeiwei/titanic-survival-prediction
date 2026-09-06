@@ -1,117 +1,51 @@
 # Titanic Survival Prediction | 泰坦尼克号生还预测
 
-> 从 C 语言到机器学习的完整学习记录 —— 一个零基础入门 AI 的自我训练项目
+使用 Python、pandas 和 scikit-learn，通过随机森林预测乘客是否生还。这是从 C 语言学习转向机器学习的入门项目。
 
-## 项目简介
+## 当前版本
 
-使用泰坦尼克号乘客数据，训练随机森林模型预测乘客是否生还。
+推荐入口为 `Titanic_prediction.ipynb`，已将最新上传的 `notebook9d78c9203f.ipynb` 整理为分步骤、有说明的主 Notebook，保留原实验计算逻辑。
 
-- **最新准确率**：0.77751（V13，当前版本）
-- **最佳准确率**：0.77751（V13，基线版本）
-- **模型**：RandomForestClassifier (n_estimators=100, random_state=91)
-- **特征数**：9 个（含 2 个衍生特征 + 2 个分箱特征）
+- 模型：`RandomForestClassifier(n_estimators=100, random_state=91)`。
+- 当前输入特征共 5 个，独热编码后列数会增加。
+- 历史 README 记录 Kaggle Accuracy 为 **0.77751（V13）**。仓库没有提交记录证明其对应哪份 Notebook，因此不将其标为整理后版本的新成绩。
+- 尚无本地验证或交叉验证结果，不能仅凭特征数量判断版本优劣。
 
-## 学习路径
+## 运行方法
 
-这个项目是我整个技术成长路线中的第一步，记录了从底层语言到 AI 的跨越：
+1. 在 Kaggle 创建 Notebook，添加 Titanic 竞赛数据。
+2. 导入 `Titanic_prediction.ipynb`，确认数据位于 `/kaggle/input/competitions/titanic/`。
+3. 从头运行全部单元格，无需 GPU。
+4. 将生成的 `submission.csv` 提交到 Titanic 竞赛并记录对应版本和成绩。
 
-**C 语言基础（指针、结构体、数组）→ 数据结构与算法 → 机器学习入门（本项目）**
+提交文件包含 `PassengerId` 和 `Survived` 两列。Accuracy 是预测正确的比例；测试集没有公开标签，不能在本地直接算出 Kaggle 成绩。
 
-之前在学 C 语言时，我习惯了自己管理内存、手动匹配括号、定义结构体来组织数据。转到 Python + pandas 后，我发现：
+## 当前特征
 
-| 在 C 里我必须... | 在 Python/pandas 里... |
-|---|---|
-| 手动 `#include` 每个库 | 一行 `import pandas as pd` |
-| 手写循环给数组赋值 | `fillna(median())` 向量化一行搞定 |
-| 手写字符串匹配函数找列 | `train_data['Name'].str.extract(r'...')` |
-| 手动分配和释放内存 | pandas 自动管理内存 |
-| 用 if-else 写决策逻辑 | 随机森林自动从数据中学习 if-else 规则 |
-| 手动对齐结构体字段 | `reindex(columns=x.columns, fill_value=0)` |
-
-这个项目的价值不只是跑通了 0.77 的准确率，更是让我用"写 C 程序"的底层思维，理解了"调库写 AI"的上层抽象。**每一行代码背后发生了什么，我都能从 C 语言的角度推演出来。**
-
-## 技术栈
-
-- Python 3 / pandas / scikit-learn
-- Jupyter Notebook（实验型编程，边跑边看结果）
-
-## 核心流程
-
-| Step | 操作 | 关键代码 |
+| 特征 | 处理方式 | 设计目的 |
 |---|---|---|
-| 1. 数据加载 | 读取 Kaggle 训练集/测试集 | `pd.read_csv(...)` |
-| 2. 缺失值处理 | 用**训练集中位数**填 NaN（防数据泄露） | `fillna(train_data[col].median())` |
-| 3. 年龄分箱 | `pd.cut` 按数值边界等宽切 4 段 | `pd.cut(Age, bins=[0,12,18,60,100])` |
-| 4. 票价分箱 | `pd.qcut` 按人数比例等频切 3 档 | `pd.qcut(Fare, 3)` |
-| 5. 衍生特征 | 家庭大小 + 是否独自出行 | `FamilySize = SibSp + Parch + 1` |
-| 6. 头衔提取 | 正则从姓名抠出 Title | `str.extract(r' ([A-Z][a-z]+)\.')` |
-| 7. One-Hot 编码 | 文字分类转 0/1 独立列 | `pd.get_dummies()` |
-| 8. 特征对齐 | 保证训练/预测维度一致 | `reindex(columns=x.columns, fill_value=0)` |
-| 9. 训练模型 | 100 棵决策树投票 | `RandomForestClassifier(random_state=91)` |
-| 10. 预测提交 | 生成 submission.csv | `model.predict(x_test)` |
+| Pclass | 原始舱位等级 | 检验舱位与生还的关联 |
+| Sex | 独热编码 | 检验性别与生还的关联 |
+| Age_Bin | 按 [0, 12, 18, 60, 100] 分箱并独热编码 | 表示年龄阶段 |
+| FamilySize | SibSp + Parch + 1 | 表示含本人在内的同行家庭人数 |
+| IsAlone | FamilySize == 1 | 标记是否独自出行 |
 
-## 使用的 9 个特征
+这些是特征设计假设，是否提升效果仍需实验验证。编码后使用 `reindex(columns=x.columns, fill_value=0)` 对齐训练和测试的列。
 
-| 特征 | 来源 | 作用 |
-|---|---|---|
-| Pclass | 原始 | 头等舱生还率远高于三等舱 |
-| Sex | 原始 | 女性生还率远高于男性 |
-| SibSp / Parch | 原始 | 家庭结构影响生还率 |
-| Age_Bin | 分箱衍生 | 儿童/老年优先级不同 |
-| Fare_Bin | 分箱衍生 | 同舱位内高票价位置更靠前 |
-| FamilySize | 数值衍生 | 小家庭（2~4人）生还率最高 |
-| IsAlone | 0/1 衍生 | 独自出行生还率偏低 |
-| Title | 字符串提取 | 头衔浓缩阶层+性别+年龄 |
+## 文件与版本
 
-## 关键技术要点
-
-### 1. 数据泄露（Data Leakage）
-测试集的缺失值填充**必须用训练集的统计量**，不能直接用测试集自身的 median。否则模型在训练时已经"偷看"了测试集的信息，导致线上分数虚高、泛化能力差。
-
-### 2. 分箱的选择
-- **`pd.cut`（等宽）**：按数值范围均分，适合分布均匀的数据
-- **`pd.qcut`（等频）**：按人数均分，适合有极端离群值偏斜的数据（如票价）
-
-### 3. 随机种子
-`random_state=91` 固定了随机森林的随机采样过程，保证每次运行的分数可复现。不加这个参数时，决策树的随机分裂每次不同，准确率会在 0.67~0.77 之间浮动。
-
-### 4. 特征对齐
-`reindex(columns=x.columns, fill_value=0)` 以训练集的特征列为标准，测试集缺的列补 0、多的列删掉。如果独热编码后两边维度不一致，直接 `predict()` 会报 `KeyError`。
-
-## 学习收获
-
-✅ 理解了监督学习的基本范式：特征 X → 标签 y → 模型训练 → 预测
-
-✅ 掌握了 pandas 数据预处理的完整流程：缺失值处理、特征分箱、衍生特征、字符串正则提取、One-Hot 编码、特征对齐
-
-✅ 理解了**数据泄露**的本质和避免方法
-
-✅ 理解了**随机种子**对实验可复现性的意义
-
-✅ 建立了"从 C 到 Python"的思维迁移：底层数组思维 → 高层数据科学生态的理解
-
-✅ 跑通了 Kaggle 竞赛的完整提交流程
-
-## 后续优化方向
-
-- [ ] **分组中位数填充**：按 Pclass + Sex 分组填充 Age，比全局中位数更精准
-- [ ] **特征交叉**：尝试 Age × Pclass 等组合特征
-- [ ] **模型对比**：对比 LogisticRegression / GradientBoosting / XGBoost 的效果
-- [ ] **使用 sklearn Pipeline**：把数据预处理和模型训练串成一条管线，规范化流程
-- [ ] **特征重要性分析**：用 `model.feature_importances_` 看看模型到底最看重哪些特征
-
----
-
-*This project marks the starting point of my journey from embedded/C programming to machine learning and AI. It documents how I learned to think in terms of features, labels, and models — and how my C-background gave me a solid foundation for understanding what happens underneath the high-level abstractions.*
-
-## 文件说明
-
-| 文件 | 说明 |
+| 文件 | 内容 |
 |---|---|
-| Titanic_prediction.ipynb | 完整 Jupyter Notebook，包含全部代码、注释与运行过程 |
-| README.md | 本说明文件 |
+| Titanic_prediction.ipynb | 推荐入口，整理后的最新 5 特征实验 |
+| notebook9d78c9203f.ipynb | 最新 Kaggle 导出原件，保持不变以便核对 |
+| Git 历史中的主 Notebook | 早期 9 特征实验，包含 Fare_Bin、Title 等 |
 
-## 技术栈
+本次整理保留最新实验的填充方式、年龄边界、模型参数和预测逻辑。移除了无关的 Kaggle 模板代码，拆分步骤，更新说明并清空主 Notebook 的运行状态，未加入旧版特征。
 
-- Python 3 / pandas / scikit-learn
-- Jupyter Notebook
+## 复盘与待改进
+
+1. **预处理一致性**：当前训练集和测试集分别使用自身中位数填充 Age、Fare。后续应从训练部分计算统计量，再应用到验证和测试部分。这不等于读取生还标签，也不能直接断言线上分数一定虚高。Fare 当前未进入模型，其填充不影响预测。
+2. **分箱含义**：指定年龄边界是不等宽分箱，默认左开右闭，0 或超出边界的值会成为缺失值。旧版对训练和测试分别做票价 qcut 会产生不同边界；最新版本已不使用票价分箱。
+3. **实验可比较性**：固定 random_state 有助于相同环境下复现结果，不能据此将历史分数波动全部归因于种子。应固定验证划分，每次改变一个因素并记录结果。
+
+下一步先划分训练和验证集，仅用训练部分拟合预处理规则；记录基线和两次特征改动的验证 Accuracy、Kaggle 分数与结论。无提升也如实记录。
